@@ -18,16 +18,9 @@ const NiftiViewerPage = dynamic(
 
 export default function Home() {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "100vh",
-        backgroundColor: "#272727",
-      }}
-    >
+    <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
-      <main style={{ flex: 1, display: "flex" }}>
+      <main className="flex-1 flex">
         <NiftiViewerPage />
       </main>
       <Footer />
