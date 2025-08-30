@@ -6,7 +6,7 @@ import { Niivue } from '@niivue/niivue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileImage, Brain, Eye, RotateCcw, Download, CheckCircle, AlertCircle, EyeOff, Cpu, Zap, Circle } from 'lucide-react';
+import { Upload, FileImage, Brain, Eye, RotateCcw, Download, CheckCircle, AlertCircle, EyeOff, Cpu, Zap, Circle, FolderOpen, File } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { bratsAPI } from "@/services/api";
 
@@ -380,112 +380,121 @@ const NiftiVolume = ({ url, segmentationUrl, filename, segmentationFilename }) =
               {is3D ? '3D Volume' : 'Switch to 3D'}
             </Button>
             
-            {segmentationUrl && (
-              <>
-                <Button
-                  onClick={toggleSegmentation}
-                  variant={showSegmentation ? "default" : "outline"}
-                  size="sm"
-                  className={cn(
-                    "backdrop-blur-sm transition-all duration-300 border-0 shadow-lg hover:shadow-xl",
-                    showSegmentation ? "bg-slate-600 hover:bg-slate-700 text-white" : "bg-slate-700 hover:bg-slate-600 text-white"
-                  )}
-                >
-                  {showSegmentation ? (
-                    <Eye className="w-4 h-4 mr-2" />
-                  ) : (
-                    <EyeOff className="w-4 h-4 mr-2" />
-                  )}
-                  {showSegmentation ? 'Hide All' : 'Show All'}
-                </Button>
-                
-                {showSegmentation && (
-                  <div className="space-y-1">
-                    {[
-                      { key: 'wholeTumor', label: 'WT', color: 'bg-yellow-500', hoverColor: 'hover:bg-yellow-600' },
-                      { key: 'enhancing', label: 'ET', color: 'bg-red-500', hoverColor: 'hover:bg-red-600' },
-                      { key: 'core', label: 'TC', color: 'bg-blue-500', hoverColor: 'hover:bg-blue-600' }
-                    ].map((tumor) => (
-                      <Button
-                        key={tumor.key}
-                        onClick={() => toggleTumorType(tumor.key)}
-                        variant="outline"
-                        size="sm"
-                        className={cn(
-                          "backdrop-blur-sm transition-all duration-300 border-0 shadow-lg hover:shadow-xl w-12 h-8 p-0",
-                          tumorVisibility[tumor.key] 
-                            ? cn(tumor.color, tumor.hoverColor, "text-white") 
-                            : "bg-slate-700 hover:bg-slate-600 text-white"
-                        )}
-                      >
-                        <span className="text-xs font-bold">{tumor.label}</span>
-                      </Button>
-                    ))}
-                    
-                    {/* Debug button to test colormap visibility */}
+            {segmentationUrl && showSegmentation && (
+              <div className="space-y-2">
+                {/* Tumor Type Controls */}
+                <div className="flex gap-1">
+                  {[
+                    { key: 'wholeTumor', label: 'WT', color: 'bg-yellow-500', hoverColor: 'hover:bg-yellow-600', ring: 'ring-yellow-400' },
+                    { key: 'enhancing', label: 'ET', color: 'bg-red-500', hoverColor: 'hover:bg-red-600', ring: 'ring-red-400' },
+                    { key: 'core', label: 'TC', color: 'bg-blue-500', hoverColor: 'hover:bg-blue-600', ring: 'ring-blue-400' }
+                  ].map((tumor) => (
                     <Button
-                      onClick={() => {
-                        if (nvRef.current && nvRef.current.volumes.length > 1) {
-                          const segVolume = nvRef.current.volumes[1];
-                          const availableColormaps = ['warm', 'red', 'viridis', 'jet', 'plasma', 'hot', 'BraTS_Probability', 'BraTS_Labels'];
-                          const currentIdx = availableColormaps.indexOf(segVolume.colormap) || 0;
-                          const nextColormap = availableColormaps[(currentIdx + 1) % availableColormaps.length];
-                          console.log(`Testing colormap: ${nextColormap} (was: ${segVolume.colormap})`);
-                          
-                          // Also try adjusting intensity range
-                          segVolume.cal_min = 0;
-                          segVolume.cal_max = segVolume.global_max;
-                          
-                          nvRef.current.setColormap(segVolume.id, nextColormap);
-                          nvRef.current.setOpacity(1, 0.9);
-                          nvRef.current.updateGLVolume();
-                          
-                          console.log(`Applied: ${nextColormap}, Range: ${segVolume.cal_min}-${segVolume.cal_max}, Opacity: ${segVolume.opacity}`);
-                        }
-                      }}
+                      key={tumor.key}
+                      onClick={() => toggleTumorType(tumor.key)}
                       variant="outline"
                       size="sm"
-                      className="backdrop-blur-sm transition-all duration-300 border-0 shadow-lg hover:shadow-xl bg-purple-600 hover:bg-purple-700 text-white w-12 h-8 p-0"
+                      className={cn(
+                        "backdrop-blur-md transition-all duration-300 border-2 shadow-lg hover:shadow-xl",
+                        "w-10 h-8 p-0 rounded-lg font-bold text-xs hover:scale-105 active:scale-95",
+                        tumorVisibility[tumor.key] 
+                          ? cn(
+                              tumor.color, 
+                              tumor.hoverColor, 
+                              "text-white border-white/30 shadow-2xl",
+                              `ring-2 ${tumor.ring}/50`
+                            ) 
+                          : "bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border-slate-600/50 hover:border-slate-500/70"
+                      )}
                     >
-                      <span className="text-xs font-bold">TEST</span>
+                      <motion.span 
+                        className="text-xs font-extrabold tracking-wide"
+                        animate={{ scale: tumorVisibility[tumor.key] ? 1.05 : 1 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {tumor.label}
+                      </motion.span>
                     </Button>
-                    
-                    {/* Force visibility button */}
-                    <Button
-                      onClick={() => {
-                        if (nvRef.current && nvRef.current.volumes.length > 1) {
-                          const segVolume = nvRef.current.volumes[1];
-                          console.log("Force visibility attempt...");
-                          
-                          // Try the most visible colormap
-                          nvRef.current.setColormap(segVolume.id, 'red');
-                          
-                          // Force extreme visibility settings
-                          segVolume.cal_min = segVolume.global_min;
-                          segVolume.cal_max = segVolume.global_max;
-                          nvRef.current.setOpacity(1, 1.0); // Full opacity
-                          
-                          // Force multiple updates
+                  ))}
+                </div>
+                
+                {/* Debug Controls */}
+                <div className="flex gap-1">
+                  {/* Debug button to test colormap visibility */}
+                  <Button
+                    onClick={() => {
+                      if (nvRef.current && nvRef.current.volumes.length > 1) {
+                        const segVolume = nvRef.current.volumes[1];
+                        const availableColormaps = ['warm', 'red', 'viridis', 'jet', 'plasma', 'hot', 'BraTS_Probability', 'BraTS_Labels'];
+                        const currentIdx = availableColormaps.indexOf(segVolume.colormap) || 0;
+                        const nextColormap = availableColormaps[(currentIdx + 1) % availableColormaps.length];
+                        console.log(`Testing colormap: ${nextColormap} (was: ${segVolume.colormap})`);
+                        
+                        // Also try adjusting intensity range
+                        segVolume.cal_min = 0;
+                        segVolume.cal_max = segVolume.global_max;
+                        
+                        nvRef.current.setColormap(segVolume.id, nextColormap);
+                        nvRef.current.setOpacity(1, 0.9);
+                        nvRef.current.updateGLVolume();
+                        
+                        console.log(`Applied: ${nextColormap}, Range: ${segVolume.cal_min}-${segVolume.cal_max}, Opacity: ${segVolume.opacity}`);
+                      }
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="backdrop-blur-md transition-all duration-300 border-2 shadow-lg hover:shadow-xl bg-purple-600/90 hover:bg-purple-500 text-white border-purple-400/50 hover:border-purple-300/70 w-12 h-8 p-0 rounded-lg font-bold hover:scale-105 active:scale-95 ring-2 ring-purple-400/30"
+                  >
+                    <motion.span 
+                      className="text-xs font-extrabold tracking-wide"
+                      whileHover={{ scale: 1.05 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      TEST
+                    </motion.span>
+                  </Button>
+                  
+                  {/* Force visibility button */}
+                  <Button
+                    onClick={() => {
+                      if (nvRef.current && nvRef.current.volumes.length > 1) {
+                        const segVolume = nvRef.current.volumes[1];
+                        console.log("Force visibility attempt...");
+                        
+                        // Try the most visible colormap
+                        nvRef.current.setColormap(segVolume.id, 'red');
+                        
+                        // Force extreme visibility settings
+                        segVolume.cal_min = segVolume.global_min;
+                        segVolume.cal_max = segVolume.global_max;
+                        nvRef.current.setOpacity(1, 1.0); // Full opacity
+                        
+                        // Force multiple updates
+                        nvRef.current.updateGLVolume();
+                        nvRef.current.drawScene();
+                        
+                        setTimeout(() => {
                           nvRef.current.updateGLVolume();
                           nvRef.current.drawScene();
-                          
-                          setTimeout(() => {
-                            nvRef.current.updateGLVolume();
-                            nvRef.current.drawScene();
-                          }, 100);
-                          
-                          console.log("Force visibility applied with red colormap and full opacity");
-                        }
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="backdrop-blur-sm transition-all duration-300 border-0 shadow-lg hover:shadow-xl bg-orange-600 hover:bg-orange-700 text-white w-12 h-8 p-0"
+                        }, 100);
+                        
+                        console.log("Force visibility applied with red colormap and full opacity");
+                      }
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="backdrop-blur-md transition-all duration-300 border-2 shadow-lg hover:shadow-xl bg-gradient-to-r from-orange-600/90 to-amber-600/90 hover:from-orange-500 hover:to-amber-500 text-white border-orange-400/50 hover:border-orange-300/70 w-12 h-8 p-0 rounded-lg font-bold hover:scale-105 active:scale-95 ring-2 ring-orange-400/30"
+                  >
+                    <motion.span 
+                      className="text-xs font-extrabold tracking-wide"
+                      whileHover={{ scale: 1.05 }}
+                      transition={{ duration: 0.2 }}
                     >
-                      <span className="text-xs font-bold">SHOW</span>
-                    </Button>
-                  </div>
-                )}
-              </>
+                      SHOW
+                    </motion.span>
+                  </Button>
+                </div>
+              </div>
             )}
           </motion.div>
                 )}
@@ -590,12 +599,117 @@ export default function NiftiViewerPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [apiMode, setApiMode] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
+  const [brainFiles, setBrainFiles] = useState([]);
+  const [segmentationFiles, setSegmentationFiles] = useState([]);
+  const [showBrainFileModal, setShowBrainFileModal] = useState(false);
+  const [showSegFileModal, setShowSegFileModal] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState('');
+  const [selectedSegFile, setSelectedSegFile] = useState('');
 
   const steps = [
     { id: 0, title: "Upload Brain Image", description: "Load your brain MRI scan (.nii.gz)" },
     { id: 1, title: "Upload Segmentation", description: "Load tumor segmentation mask (optional)" },
     { id: 2, title: "View Results", description: "Explore your data in 2D/3D" }
   ];
+
+  // Load local files from the niftis directory
+  useEffect(() => {
+    const loadLocalFiles = async () => {
+      try {
+        // Brain images in main niftis folder
+        const brainFilesList = [
+          'BraTS-GLI-00005-100-t1c.nii',
+          'BraTS-GLI-00005-100-t2f.nii',
+          'BraTS-GLI-00005-100-t2w.nii',
+          'BraTS-GLI-00005-101-t1c.nii',
+          'BraTS-GLI-00005-101-t1n.nii',
+          'BraTS-GLI-00005-101-t2f.nii',
+          'BraTS-GLI-00005-101-t2w.nii'
+        ];
+        
+        // Segmentation files in segmentations subfolder
+        const segmentationFilesList = [
+          'BraTS-GLI-00005-100-seg.nii',
+          'BraTS-GLI-00005-101-seg.nii'
+        ];
+        
+        setBrainFiles(brainFilesList);
+        setSegmentationFiles(segmentationFilesList);
+      } catch (error) {
+        console.error('Error loading local files:', error);
+      }
+    };
+
+    loadLocalFiles();
+  }, []);
+
+  const loadLocalBrainFile = async (filename) => {
+    try {
+      setUploadProgress(0);
+      setError('');
+
+      // Simulate loading progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(progressInterval);
+            return 100;
+          }
+          return prev + 15;
+        });
+      }, 100);
+
+      // Create a URL for the local brain file
+      const fileUrl = `/niftis/${filename}`;
+      
+      setTimeout(() => {
+        setImageUrl(fileUrl);
+        setImageFilename(filename);
+        setSelectedImageFile(filename);
+        setCurrentStep(1); // Move to segmentation step
+        setUploadProgress(0);
+        setShowBrainFileModal(false); // Close modal
+      }, 800);
+      
+    } catch (error) {
+      setError(`Error loading local brain file: ${error.message}`);
+      setUploadProgress(0);
+    }
+  };
+
+  const loadLocalSegFile = async (filename) => {
+    try {
+      setUploadProgress(0);
+      setError('');
+
+      // Simulate loading progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(progressInterval);
+            return 100;
+          }
+          return prev + 15;
+        });
+      }, 100);
+
+      // Create a URL for the local segmentation file
+      const fileUrl = `/niftis/segmentations/${filename}`;
+      
+      setTimeout(() => {
+        setSegUrl(fileUrl);
+        setSegFilename(filename);
+        setSelectedSegFile(filename);
+        setCurrentStep(2); // Move to viewing step
+        setUploadProgress(0);
+        setShowSegFileModal(false); // Close modal
+      }, 800);
+      
+    } catch (error) {
+      setError(`Error loading local segmentation file: ${error.message}`);
+      setUploadProgress(0);
+    }
+  };
 
   const handleFileChange = async (e, fileType) => {
     const file = e.target.files[0];
@@ -813,16 +927,26 @@ export default function NiftiViewerPage() {
                   <div className="text-center text-sm text-slate-400 font-medium">
                     Manual Upload
                   </div>
-                  <Button
-                    asChild
-                    className="w-full bg-purple-600 hover:bg-purple-700 border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-                    size="lg"
-                  >
-                    <label htmlFor="image-upload" className="cursor-pointer flex items-center justify-center">
-                      <FileImage className="w-4 h-4 mr-2" />
-                      Select Brain Image
-            </label>
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      asChild
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+                      size="lg"
+                    >
+                      <label htmlFor="image-upload" className="cursor-pointer flex items-center justify-center">
+                        <FileImage className="w-4 h-4 mr-2" />
+                        Select Brain Image
+                      </label>
+                    </Button>
+                    <Button
+                      onClick={() => setShowBrainFileModal(true)}
+                      variant="outline"
+                      size="lg"
+                      className="px-3 border-purple-500/50 hover:border-purple-500 hover:bg-purple-600/10 transition-all duration-300"
+                    >
+                      <FolderOpen className="w-4 h-4" />
+                    </Button>
+                  </div>
                   
                   <div className="flex items-center justify-center">
                     <div className="h-px bg-slate-700 flex-1" />
@@ -843,6 +967,8 @@ export default function NiftiViewerPage() {
                       Process with AI
                     </label>
                   </Button>
+                  
+
                 </motion.div>
               )}
 
@@ -850,7 +976,7 @@ export default function NiftiViewerPage() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="space-y-2"
+                  className="space-y-3"
                 >
                   <input
                     id="seg-upload"
@@ -859,16 +985,26 @@ export default function NiftiViewerPage() {
                     onChange={(e) => handleFileChange(e, 'segmentation')}
                     className="hidden"
                   />
-                  <Button
-                    asChild
-                    className="w-full bg-green-600 hover:bg-green-700 border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-                    size="lg"
-                  >
-                    <label htmlFor="seg-upload" className="cursor-pointer flex items-center justify-center">
-                      <Brain className="w-4 h-4 mr-2" />
-                      Select Segmentation
-            </label>
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      asChild
+                      className="flex-1 bg-green-600 hover:bg-green-700 border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+                      size="lg"
+                    >
+                      <label htmlFor="seg-upload" className="cursor-pointer flex items-center justify-center">
+                        <Brain className="w-4 h-4 mr-2" />
+                        Select Segmentation
+                      </label>
+                    </Button>
+                    <Button
+                      onClick={() => setShowSegFileModal(true)}
+                      variant="outline"
+                      size="lg"
+                      className="px-3 border-green-500/50 hover:border-green-500 hover:bg-green-600/10 transition-all duration-300"
+                    >
+                      <FolderOpen className="w-4 h-4" />
+                    </Button>
+                  </div>
                   <Button
                     onClick={skipSegmentation}
                     variant="outline"
@@ -1008,6 +1144,138 @@ export default function NiftiViewerPage() {
           </CardContent>
         </Card>
       </motion.div>
+      
+      {/* Brain File Selection Modal */}
+      <AnimatePresence>
+        {showBrainFileModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowBrainFileModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-md w-full mx-4"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-purple-400" />
+                  Select Brain Image
+                </h3>
+                <Button
+                  onClick={() => setShowBrainFileModal(false)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-slate-400 hover:text-slate-200"
+                >
+                  ×
+                </Button>
+              </div>
+              
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {brainFiles.map((filename) => {
+                  const patientMatch = filename.match(/BraTS-GLI-00005-(\d+)/);
+                  const typeMatch = filename.match(/-(t1c|t2f|t2w|t1n)\.nii$/);
+                  const patientId = patientMatch ? patientMatch[1] : '';
+                  const fileType = typeMatch ? typeMatch[1].toUpperCase() : '';
+                  
+                  return (
+                    <Button
+                      key={filename}
+                      onClick={() => loadLocalBrainFile(filename)}
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left border-slate-600 hover:border-purple-500/50 transition-all duration-200",
+                        selectedImageFile === filename 
+                          ? "bg-purple-600/20 border-purple-500 text-purple-300" 
+                          : "text-slate-300 hover:bg-slate-700/50"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <File className="w-4 h-4" />
+                        <div className="flex flex-col">
+                          <span className="font-medium">Patient {patientId} - {fileType}</span>
+                          <span className="text-xs text-slate-500">{filename}</span>
+                        </div>
+                      </div>
+                    </Button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Segmentation File Selection Modal */}
+      <AnimatePresence>
+        {showSegFileModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowSegFileModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-md w-full mx-4"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-green-400" />
+                  Select Segmentation
+                </h3>
+                <Button
+                  onClick={() => setShowSegFileModal(false)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-slate-400 hover:text-slate-200"
+                >
+                  ×
+                </Button>
+              </div>
+              
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {segmentationFiles.map((filename) => {
+                  const patientMatch = filename.match(/BraTS-GLI-00005-(\d+)/);
+                  const patientId = patientMatch ? patientMatch[1] : '';
+                  
+                  return (
+                    <Button
+                      key={filename}
+                      onClick={() => loadLocalSegFile(filename)}
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left border-slate-600 hover:border-green-500/50 transition-all duration-200",
+                        selectedSegFile === filename 
+                          ? "bg-green-600/20 border-green-500 text-green-300" 
+                          : "text-slate-300 hover:bg-slate-700/50"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Brain className="w-4 h-4" />
+                        <div className="flex flex-col">
+                          <span className="font-medium">Patient {patientId} - Segmentation</span>
+                          <span className="text-xs text-slate-500">{filename}</span>
+                        </div>
+                      </div>
+                    </Button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
